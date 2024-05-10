@@ -1,0 +1,75 @@
+#include <ESP32Servo.h>
+
+const int trigPin = 32;      // Trigger pin of ultrasonic sensor
+const int echoPin = 33;      // Echo pin of ultrasonic sensor
+const int servoPin = 27;     // Servo motor control pin
+const int irSensorPin = 26;  // IR sensor pin
+const int maxDistance = 50;  // Maximum distance to consider for empty bin
+const int minDistance = 5;   // Minimum distance to consider for full bin
+
+// Define the distance intervals and their corresponding percentages
+Servo servo;  // Create a servo object
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(irSensorPin, INPUT);
+  servo.attach(servoPin);
+}
+
+void loop() {
+  long duration, distance;
+  int irSensorValue;
+
+  // Measure distance using ultrasonic sensor
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  duration = pulseIn(echoPin, HIGH);
+
+  // Calculate distance in centimeters
+  distance = duration * 0.034 / 2;
+
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  // Read IR sensor value to detect person
+  irSensorValue = digitalRead(irSensorPin);
+
+  // Estimate dustbin level based on ultrasonic sensor (presence of waste)
+  int dustbinLevel;
+
+  if (irSensorValue == LOW) {
+    dustbinLevel = 0; // Empty
+  } 
+  else {
+     dustbinLevel = map(distance, minDistance, maxDistance, 100, 0);
+     dustbinLevel = constrain(dustbinLevel, 0, 100); // Full
+  }
+
+  // Print dustbin level
+  Serial.print("Dustbin Level: ");
+  Serial.print(dustbinLevel);
+  Serial.println("%");
+
+  // If a person is detected (IR sensor detects LOW), open the lid
+  if (irSensorValue == LOW) {
+    openLid();
+  } else {
+    // If no person detected, close the lid
+    closeLid();
+  }
+}
+
+void openLid() {
+  servo.write(360);  // Adjust the angle to open the lid completely
+}
+
+void closeLid() {
+  servo.write(0);  // Adjust the angle to close the lid completely
+}
